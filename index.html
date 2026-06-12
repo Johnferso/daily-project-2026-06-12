@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tradutor Morse / Morse Translator</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --accent2: #f78166;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --dot: #58a6ff;
+    --dash: #f78166;
+    --btn-bg: #21262d;
+    --btn-hover: #30363d;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .morse-logo { font-size: 22px; letter-spacing: 4px; color: var(--accent); font-weight: bold; }
+  h1 { font-size: 1.2rem; font-weight: 600; }
+  .subtitle { font-size: 0.8rem; color: var(--text2); margin-top: 2px; }
+  .header-controls { display: flex; gap: 10px; align-items: center; }
+  button {
+    background: var(--btn-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--btn-hover); }
+  button.accent { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+  button.danger { background: var(--accent2); color: #0d1117; border-color: var(--accent2); font-weight: 600; }
+  #lang-toggle { background: var(--surface2); border: 1px solid var(--accent); color: var(--accent); font-weight: 600; min-width: 80px; }
+  main { flex: 1; padding: 24px; max-width: 900px; width: 100%; margin: 0 auto; }
+  .translator-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: start;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 600px) {
+    .translator-grid { grid-template-columns: 1fr; }
+    .swap-col { display: flex; justify-content: center; }
+  }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .panel-header {
+    background: var(--surface2);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); }
+  .char-count { font-size: 0.75rem; color: var(--text2); }
+  textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 14px;
+    font-size: 1rem;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 180px;
+    outline: none;
+    font-family: inherit;
+  }
+  #morse-output { font-family: 'Courier New', monospace; letter-spacing: 2px; font-size: 1.1rem; color: var(--accent); }
+  .swap-col { display: flex; align-items: center; justify-content: center; padding-top: 52px; }
+  #swap-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; padding: 0; border-color: var(--accent); color: var(--accent); }
+  .audio-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+  .audio-section h3 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); margin-bottom: 14px; }
+  .audio-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .wpm-control { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+  .wpm-control label { color: var(--text2); white-space: nowrap; }
+  .wpm-control input[type=range] { width: 100px; accent-color: var(--accent); }
+  .wpm-val { font-weight: bold; color: var(--accent); min-width: 30px; }
+  .visualizer { display: flex; align-items: center; gap: 4px; height: 30px; margin-left: auto; }
+  .viz-bar { width: 4px; border-radius: 2px; background: var(--accent); transition: height 0.05s; }
+  .playing-label { font-size: 0.75rem; color: var(--accent); font-weight: 600; display: none; }
+  .ref-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+  .ref-header { background: var(--surface2); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+  .ref-header h3 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); }
+  .ref-toggle { color: var(--text2); font-size: 0.8rem; }
+  .ref-body { padding: 14px; display: none; }
+  .ref-body.open { display: block; }
+  .morse-table { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
+  .morse-cell { background: var(--surface2); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .morse-char { font-weight: bold; color: var(--text); font-size: 0.9rem; }
+  .morse-code { font-family: monospace; color: var(--accent); font-size: 0.8rem; letter-spacing: 2px; }
+  footer { text-align: center; padding: 12px; font-size: 0.75rem; color: var(--text2); border-top: 1px solid var(--border); }
+  .dot { color: var(--dot); }
+  .dash { color: var(--dash); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="morse-logo">.-.-</div>
+    <div>
+      <h1 id="title">Tradutor Morse</h1>
+      <div class="subtitle" id="subtitle">Bidirecional · Texto ↔ Morse · Com Áudio</div>
+    </div>
+  </div>
+  <div class="header-controls">
+    <button id="lang-toggle" onclick="toggleLang()">EN</button>
+  </div>
+</header>
+<main>
+  <div class="translator-grid">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-label" id="label-text">Texto</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="char-count" id="text-count">0 chars</span>
+          <button style="padding:3px 8px;font-size:0.75rem;" onclick="clearText()" id="btn-clear-text">Limpar</button>
+        </div>
+      </div>
+      <textarea id="text-input" placeholder="Digite texto aqui..." oninput="onTextInput()"></textarea>
+    </div>
+    <div class="swap-col">
+      <button id="swap-btn" title="Inverter" onclick="swapContent()">⇄</button>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-label" id="label-morse">Morse</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="char-count" id="morse-count">0 chars</span>
+          <button style="padding:3px 8px;font-size:0.75rem;" onclick="clearMorse()" id="btn-clear-morse">Limpar</button>
+          <button style="padding:3px 8px;font-size:0.75rem;" onclick="copyMorse()" id="btn-copy">Copiar</button>
+        </div>
+      </div>
+      <textarea id="morse-output" placeholder="... --- ..." oninput="onMorseInput()"></textarea>
+    </div>
+  </div>
+  <div class="audio-section">
+    <h3 id="audio-title">🔊 Tocar Morse em Áudio</h3>
+    <div class="audio-controls">
+      <button class="accent" id="play-btn" onclick="playMorse()">▶ Tocar</button>
+      <button class="danger" id="stop-btn" onclick="stopMorse()" style="display:none;">■ Parar</button>
+      <div class="wpm-control">
+        <label id="wpm-label">Velocidade (WPM):</label>
+        <input type="range" id="wpm-slider" min="5" max="40" value="15" oninput="updateWPM()">
+        <span class="wpm-val" id="wpm-val">15</span>
+      </div>
+      <div class="visualizer" id="visualizer">
+        <div class="viz-bar" id="vb1" style="height:6px"></div>
+        <div class="viz-bar" id="vb2" style="height:6px"></div>
+        <div class="viz-bar" id="vb3" style="height:6px"></div>
+        <div class="viz-bar" id="vb4" style="height:6px"></div>
+        <div class="viz-bar" id="vb5" style="height:6px"></div>
+      </div>
+      <span class="playing-label" id="playing-label">● TOCANDO</span>
+    </div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-header" onclick="toggleRef()">
+      <h3 id="ref-title">Tabela de Referência Morse</h3>
+      <span class="ref-toggle" id="ref-toggle-icon">▼ Expandir</span>
+    </div>
+    <div class="ref-body" id="ref-body">
+      <div class="morse-table" id="morse-table"></div>
+    </div>
+  </div>
+</main>
+<footer id="footer">
+  Morse Translator • Jonathan Ferreira Soares • 2026 • Open Source (MIT)
+</footer>
+<script>
+const MORSE = {
+  'A':'.-','B':'-...','C':'-.-.','D':'-..','E':'.','F':'..-.','G':'--.','H':'....','I':'..','J':'.---',
+  'K':'-.-','L':'.-..','M':'--','N':'-.','O':'---','P':'.--.','Q':'--.-','R':'.-.','S':'...','T':'-',
+  'U':'..-','V':'...-','W':'.--','X':'-..-','Y':'-.--','Z':'--..',
+  '0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.',
+  '.':'.-.-.-',',':'--..--','?':'..--..','!':'-.-.--'
+};
+const REVERSE_MORSE = {};
+Object.entries(MORSE).forEach(([k,v]) => { if (!REVERSE_MORSE[v]) REVERSE_MORSE[v] = k; });
+
+function textToMorse(txt) {
+  return txt.toUpperCase().split('').map(c => {
+    if (c === ' ') return '/';
+    return MORSE[c] || '?';
+  }).join(' ');
+}
+
+function morseToText(morse) {
+  return morse.trim().split(/\s{2,}\/\s{2,}|\s*\/\s*/).map(word => {
+    return word.trim().split(/\s+/).map(sym => {
+      if (!sym) return '';
+      return REVERSE_MORSE[sym] || '?';
+    }).join('');
+  }).join(' ');
+}
+
+let lang = 'pt';
+let audioCtx = null;
+let isPlaying = false;
+let stopFlag = false;
+let vizInterval = null;
+
+const STRINGS = {
+  pt: {
+    title: 'Tradutor Morse',
+    subtitle: 'Bidirecional · Texto ↔ Morse · Com Áudio',
+    'label-text': 'Texto',
+    'label-morse': 'Morse',
+    'text-placeholder': 'Digite texto aqui...',
+    'morse-placeholder': 'Digite Morse aqui  (ex: ... --- ...)',
+    'btn-clear-text': 'Limpar',
+    'btn-clear-morse': 'Limpar',
+    'btn-copy': 'Copiar',
+    'audio-title': '🔊 Tocar Morse em Áudio',
+    'play-btn': '▶ Tocar',
+    'stop-btn': '■ Parar',
+    'wpm-label': 'Velocidade (WPM):',
+    'playing-label': '● TOCANDO',
+    'ref-title': 'Tabela de Referência Morse',
+    'ref-toggle-expand': '▼ Expandir',
+    'ref-toggle-collapse': '▲ Recolher',
+    'footer': 'Tradutor Morse • Jonathan Ferreira Soares • 2026 • Open Source (MIT)',
+    'chars': 'chars',
+    'copied': 'Copiado!'
+  },
+  en: {
+    title: 'Morse Translator',
+    subtitle: 'Bidirectional · Text ↔ Morse · With Audio',
+    'label-text': 'Text',
+    'label-morse': 'Morse',
+    'text-placeholder': 'Type text here...',
+    'morse-placeholder': 'Type Morse here  (e.g. ... --- ...)',
+    'btn-clear-text': 'Clear',
+    'btn-clear-morse': 'Clear',
+    'btn-copy': 'Copy',
+    'audio-title': '🔊 Play Morse Audio',
+    'play-btn': '▶ Play',
+    'stop-btn': '■ Stop',
+    'wpm-label': 'Speed (WPM):',
+    'playing-label': '● PLAYING',
+    'ref-title': 'Morse Reference Table',
+    'ref-toggle-expand': '▼ Expand',
+    'ref-toggle-collapse': '▲ Collapse',
+    'footer': 'Morse Translator • Jonathan Ferreira Soares • 2026 • Open Source (MIT)',
+    'chars': 'chars',
+    'copied': 'Copied!'
+  }
+};
+
+function t(key) { return STRINGS[lang][key] || key; }
+
+function applyLang() {
+  ['title','subtitle','label-text','label-morse','btn-clear-text','btn-clear-morse',
+    'btn-copy','audio-title','play-btn','wpm-label','footer','ref-title'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(id);
+  });
+  document.getElementById('lang-toggle').textContent = lang === 'pt' ? 'EN' : 'PT';
+  document.getElementById('text-input').placeholder = t('text-placeholder');
+  document.getElementById('morse-output').placeholder = t('morse-placeholder');
+  document.getElementById('playing-label').textContent = t('playing-label');
+  document.getElementById('stop-btn').textContent = t('stop-btn');
+  document.title = t('title');
+  const refOpen = document.getElementById('ref-body').classList.contains('open');
+  document.getElementById('ref-toggle-icon').textContent = refOpen ? t('ref-toggle-collapse') : t('ref-toggle-expand');
+  updateCounts();
+}
+
+function toggleLang() {
+  lang = lang === 'pt' ? 'en' : 'pt';
+  applyLang();
+}
+
+let lastEdited = 'text';
+
+function onTextInput() {
+  lastEdited = 'text';
+  const txt = document.getElementById('text-input').value;
+  document.getElementById('morse-output').value = txt ? textToMorse(txt) : '';
+  updateCounts();
+}
+
+function onMorseInput() {
+  lastEdited = 'morse';
+  const morse = document.getElementById('morse-output').value;
+  document.getElementById('text-input').value = morse ? morseToText(morse) : '';
+  updateCounts();
+}
+
+function updateCounts() {
+  const tLen = document.getElementById('text-input').value.length;
+  const mLen = document.getElementById('morse-output').value.length;
+  document.getElementById('text-count').textContent = tLen + ' ' + t('chars');
+  document.getElementById('morse-count').textContent = mLen + ' ' + t('chars');
+}
+
+function clearText() {
+  document.getElementById('text-input').value = '';
+  document.getElementById('morse-output').value = '';
+  lastEdited = 'text';
+  updateCounts();
+}
+
+function clearMorse() {
+  document.getElementById('morse-output').value = '';
+  document.getElementById('text-input').value = '';
+  lastEdited = 'morse';
+  updateCounts();
+}
+
+function copyMorse() {
+  const val = document.getElementById('morse-output').value;
+  if (navigator.clipboard) navigator.clipboard.writeText(val).catch(() => {});
+  const btn = document.getElementById('btn-copy');
+  const orig = btn.textContent;
+  btn.textContent = t('copied');
+  setTimeout(() => { btn.textContent = orig; }, 1500);
+}
+
+function swapContent() {
+  const morseEl = document.getElementById('morse-output');
+  const morseVal = morseEl.value;
+  document.getElementById('text-input').value = morseVal;
+  morseEl.value = textToMorse(morseVal);
+  lastEdited = 'text';
+  updateCounts();
+}
+
+function getWPM() { return parseInt(document.getElementById('wpm-slider').value); }
+function updateWPM() { document.getElementById('wpm-val').textContent = getWPM(); }
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function startViz() {
+  const bars = ['vb1','vb2','vb3','vb4','vb5'];
+  document.getElementById('playing-label').style.display = 'inline';
+  vizInterval = setInterval(() => {
+    bars.forEach(id => {
+      document.getElementById(id).style.height = (Math.floor(Math.random()*22)+4)+'px';
+    });
+  }, 80);
+}
+
+function stopViz() {
+  clearInterval(vizInterval);
+  document.getElementById('playing-label').style.display = 'none';
+  ['vb1','vb2','vb3','vb4','vb5'].forEach(id => { document.getElementById(id).style.height = '6px'; });
+}
+
+async function beep(ctx, duration) {
+  return new Promise(resolve => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = 600;
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.005);
+    gain.gain.setValueAtTime(0.5, ctx.currentTime + duration/1000 - 0.005);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration/1000);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration/1000);
+    osc.onended = resolve;
+  });
+}
+
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function playMorse() {
+  if (isPlaying) return;
+  const morse = document.getElementById('morse-output').value.trim();
+  if (!morse) return;
+  isPlaying = true;
+  stopFlag = false;
+  document.getElementById('play-btn').style.display = 'none';
+  document.getElementById('stop-btn').style.display = 'inline-block';
+  startViz();
+  const ctx = getAudioCtx();
+  const u = 1200 / getWPM();
+  const tokens = morse.split(' ');
+  for (const token of tokens) {
+    if (stopFlag) break;
+    if (token === '/') {
+      await sleep(7 * u);
+    } else {
+      for (let i = 0; i < token.length; i++) {
+        if (stopFlag) break;
+        if (token[i] === '.') await beep(ctx, u);
+        else if (token[i] === '-') await beep(ctx, 3 * u);
+        if (i < token.length - 1) await sleep(u);
+      }
+      await sleep(3 * u);
+    }
+  }
+  isPlaying = false;
+  stopFlag = false;
+  document.getElementById('play-btn').style.display = 'inline-block';
+  document.getElementById('stop-btn').style.display = 'none';
+  stopViz();
+}
+
+function stopMorse() {
+  stopFlag = true;
+  isPlaying = false;
+  document.getElementById('play-btn').style.display = 'inline-block';
+  document.getElementById('stop-btn').style.display = 'none';
+  stopViz();
+}
+
+function buildRefTable() {
+  const container = document.getElementById('morse-table');
+  const entries = Object.entries(MORSE).filter(([k]) => /[A-Z0-9.,?!]/.test(k));
+  container.innerHTML = entries.map(([k, v]) => {
+    const dots = v.split('').map(s => '<span class="'+(s==='.'?'dot':'dash')+'">'+s+'</span>').join('');
+    return '<div class="morse-cell"><span class="morse-char">'+k+'</span><span class="morse-code">'+dots+'</span></div>';
+  }).join('');
+}
+
+let refOpen = false;
+function toggleRef() {
+  refOpen = !refOpen;
+  document.getElementById('ref-body').classList.toggle('open', refOpen);
+  document.getElementById('ref-toggle-icon').textContent = refOpen ? t('ref-toggle-collapse') : t('ref-toggle-expand');
+  if (refOpen && !document.getElementById('morse-table').children.length) buildRefTable();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.altKey && e.key === 'p') { e.preventDefault(); isPlaying ? stopMorse() : playMorse(); }
+  if (e.altKey && e.key === 'l') { e.preventDefault(); toggleLang(); }
+});
+
+applyLang();
+updateWPM();
+</script>
+</body>
+</html>
